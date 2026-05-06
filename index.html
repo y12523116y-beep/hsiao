@@ -1,0 +1,191 @@
+<!doctype html>
+<html class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@700;900&amp;display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans TC', sans-serif; margin: 0; padding: 0; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+    .shake { animation: shake 0.08s linear infinite; }
+    @keyframes burst { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+    .burst { animation: burst 0.3s ease-out; }
+    @keyframes enlarge { 0%{transform:scale(1)} 100%{transform:scale(1.4)} }
+    .enlarge { animation: enlarge 0.4s ease-out forwards; }
+    
+    /* 讓超大文字在換行時有適當的行高 */
+    #result { line-height: 1.3; }
+  </style>
+  <script>
+    // Create slot machine sound effect using Web Audio API
+    function createSlotSound() {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioContext.currentTime;
+      
+      // Quick beep sounds for spinning effect
+      for (let i = 0; i < 16; i++) {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        
+        osc.frequency.setValueAtTime(800 + i * 50, now + i * 0.12);
+        osc.type = 'sine';
+        
+        gain.gain.setValueAtTime(0.3, now + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.05, now + i * 0.12 + 0.1);
+        
+        osc.start(now + i * 0.12);
+        osc.stop(now + i * 0.12 + 0.1);
+      }
+      
+      // Final "ding" sound
+      const finalOsc = audioContext.createOscillator();
+      const finalGain = audioContext.createGain();
+      
+      finalOsc.connect(finalGain);
+      finalGain.connect(audioContext.destination);
+      
+      finalOsc.frequency.setValueAtTime(1200, now + 2.0);
+      finalOsc.type = 'sine';
+      
+      finalGain.gain.setValueAtTime(0.4, now + 2.0);
+      finalGain.gain.exponentialRampToValueAtTime(0.01, now + 2.3);
+      
+      finalOsc.start(now + 2.0);
+      finalOsc.stop(now + 2.3);
+    }
+  </script>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+<body class="h-full bg-[#0f0f23]">
+<div id="app" class="h-full w-full flex flex-col items-center justify-center overflow-auto px-4 py-8" style="background: radial-gradient(ellipse at top, #16213e 0%, #0f0f23 100%);">
+   
+   <div class="mb-4 md:mb-8">
+       <img src="LOGO.png" alt="Logo" width="100" class="h-28 md:h-10 object-contain" loading="lazy" onerror="console.error('Logo failed to load:', this.src); this.style.display='none';">
+   </div>
+
+   <h1 id="title" class="text-4xl md:text-5xl font-black text-yellow-400 mb-8 tracking-wider" style="text-shadow: 0 0 20px rgba(250,204,21,0.4);">美食大對決</h1>
+	<br/>
+   
+   <!-- 顯示區塊，設定為畫面寬度的 75% (手機為 95%) -->
+  <div class="relative w-[95vw] md:w-[75vw] max-w-7xl">
+    <div class="absolute -inset-4 bg-gradient-to-r from-red-600 via-yellow-500 to-red-600 rounded-[3rem] opacity-80 blur-xl"></div>
+    <div id="display" class="relative bg-gray-900 border-[6px] md:border-[12px] border-yellow-500 rounded-[5rem] px-8 py-20 md:py-5 flex items-center justify-center text-center min-h-[30vh]">
+      <p id="result" class="text-3xl md:text-4xl font-black text-white leading-relaxed">請按下方按鈕開始抽取</p>
+    </div>
+  </div>
+<br/>
+   <!-- 按鈕區塊，設定相對應的寬度與巨大化外觀 -->
+  <div></div><button id="btn" onclick="spin()" class="mt-10 bg-red-600 hover:bg-red-500 active:scale-95 text-white text-4xl font-black px-16 py-5 rounded-full border-4 border-yellow-400 shadow-lg shadow-red-900/50 transition-all duration-150 cursor-pointer disabled:bg-gray-600 disabled:border-gray-500 disabled:cursor-not-allowed disabled:shadow-none"> 抽 </button>
+   <p class="mt-6 text-gray-500 text-sm">點擊按鈕，看你到底吃不吃！</p>
+  </div>
+<script>
+const foods = ["北部粽","南部粽","炸肉圓","蒸肉圓","咖哩飯不拌","咖哩飯攪拌","皮蛋豆腐不拌","皮蛋豆腐攪爛","布丁不拌","布丁攪爛","酥皮濃湯","脆皮濃湯","多啦A夢造型蛋糕先吃身體","多啦A夢造型蛋糕先吃頭","麥片牛奶先倒麥片","麥片牛奶先倒牛奶","吸管插中間","吸管插旁邊","養樂多從上面開","養樂多從底部開","火鍋加芋頭","香菜","肉桂","三色豆","空心地瓜球","加餡地瓜球","冬瓜餡鳳梨酥","土鳳梨酥","芝麻湯圓","花生湯圓","爆米花鹹派","爆米花甜派","薯餅蛋餅＋番茄醬","薯餅蛋餅＋醬油膏","大珍珠","小珍珠"];
+
+const resultEl = document.getElementById('result');
+const btn = document.getElementById('btn');
+
+  function spin() {
+  btn.disabled = true;
+  resultEl.classList.add('shake');
+  resultEl.style.color = '#ffffff';
+
+  // Play slot machine sound
+  createSlotSound();
+
+  const totalDuration = 2000;
+  const startTime = Date.now();
+  let delay = 50;
+
+  function tick() {
+    resultEl.textContent = foods[Math.floor(Math.random() * foods.length)];
+    const elapsed = Date.now() - startTime;
+    if (elapsed >= totalDuration) {
+      // Final result
+      resultEl.textContent = foods[Math.floor(Math.random() * foods.length)];
+      resultEl.classList.remove('shake');
+      resultEl.classList.add('burst', 'enlarge');
+      resultEl.style.color = '#fbbf24';
+      setTimeout(() => resultEl.classList.remove('burst', 'enlarge'), 400);
+      btn.disabled = false;
+      return;
+    }
+    // Ease-out: delay increases as we progress
+    const progress = elapsed / totalDuration;
+    delay = 50 + progress * progress * 400;
+    setTimeout(tick, delay);
+  }
+  setTimeout(tick, delay);
+}
+
+// Element SDK
+const defaultConfig = {
+  main_title: '美食大對決',
+  button_text: '抽',
+  background_color: '#1a1a2e',
+  accent_color: '#facc15',
+  button_color: '#dc2626',
+  text_color: '#ffffff',
+  surface_color: '#111827',
+  font_family: 'Noto Sans TC',
+  font_size: 100 // ★ 將基礎字體大幅調高，以利後續運算放大
+};
+
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (config) => {
+    const title = document.getElementById('title');
+    const app = document.getElementById('app');
+    const display = document.getElementById('display');
+
+    title.textContent = config.main_title || defaultConfig.main_title;
+    btn.textContent = config.button_text || defaultConfig.button_text;
+
+    const bg = config.background_color || defaultConfig.background_color;
+    const accent = config.accent_color || defaultConfig.accent_color;
+    const btnColor = config.button_color || defaultConfig.button_color;
+    const txt = config.text_color || defaultConfig.text_color;
+    const surface = config.surface_color || defaultConfig.surface_color;
+    const font = config.font_family || defaultConfig.font_family;
+    const size = config.font_size || defaultConfig.font_size;
+
+    app.style.background = bg;
+    title.style.color = accent;
+    display.style.backgroundColor = surface;
+    display.style.borderColor = accent;
+    btn.style.backgroundColor = btnColor;
+    btn.style.borderColor = accent;
+    resultEl.style.color = txt;
+    document.body.style.fontFamily = `${font}, sans-serif`;
+
+    // ★ 使用 clamp() 搭配 vw 讓字體實現響應式的等比放大，確保填滿畫面且不破版
+    title.style.fontSize = `clamp(2.5rem, 8vw, ${size * 5}px)`;
+    resultEl.style.fontSize = `clamp(4rem, 15vw, ${size * 8}px)`;
+    btn.style.fontSize = `clamp(3rem, 8vw, ${size * 5}px)`;
+  },
+  mapToCapabilities: (config) => ({
+    recolorables: [
+      { get: () => config.background_color || defaultConfig.background_color, set: (v) => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+      { get: () => config.surface_color || defaultConfig.surface_color, set: (v) => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+      { get: () => config.text_color || defaultConfig.text_color, set: (v) => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+      { get: () => config.accent_color || defaultConfig.accent_color, set: (v) => { config.accent_color = v; window.elementSdk.setConfig({ accent_color: v }); } },
+      { get: () => config.button_color || defaultConfig.button_color, set: (v) => { config.button_color = v; window.elementSdk.setConfig({ button_color: v }); } }
+    ],
+    borderables: [],
+    fontEditable: { get: () => config.font_family || defaultConfig.font_family, set: (v) => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); } },
+    fontSizeable: { get: () => config.font_size || defaultConfig.font_size, set: (v) => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); } }
+  }),
+  mapToEditPanelValues: (config) => new Map([
+    ["main_title", config.main_title || defaultConfig.main_title],
+    ["button_text", config.button_text || defaultConfig.button_text]
+  ])
+});
+</script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f77be28670d8f15',t:'MTc3ODA2Nzk2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
